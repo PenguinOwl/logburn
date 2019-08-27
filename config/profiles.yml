@@ -6,11 +6,14 @@ synthesis:
   truncation_error:
     regex: /truncated to fit/
     color: green
+    severity: high
   bit_length_error:
     regex: /differs from formal bit length/
     color: magenta
+    severity: low
   logical_net_error:
     regex: /logical net/
+    severity: low
     color: cyan
   veri_error:
     regex: /(VERI-.+)/

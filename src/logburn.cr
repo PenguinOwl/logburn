@@ -51,6 +51,7 @@ module Logburn
       Medium
       High
       Critical
+      Nil
     end
     {% for apl, predata in CONFIG %}
       module Profile{{apl.id.capitalize}}
@@ -58,7 +59,6 @@ module Logburn
           class {{profile.id.capitalize}}
             property match : Regex::MatchData | Nil, line : String, id : String | Nil
             @@name = "{{profile.id.downcase}}"
-            SEVERITY = Severity.{{data["severity"].id.capitalize}}
             @@records = [] of self
             def self.records
               @@records
@@ -116,7 +116,8 @@ module Logburn
       match.save
     end
   end
-        
+       
+  report_buffer = [] of Tuple(Profile::Severity, String)
   print "\n\n", ("="*20).colorize.bold, "\n\n", " "*7, "REPORT".colorize(:white).bold, " "*7, "\n\n", ("="*20).colorize.bold, "\n\n"
 
   {% for profile, data in CONFIG %}
@@ -133,12 +134,25 @@ module Logburn
             end
           end
           record_dict.each do |id, array|
-            dputs Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.cprint "Found #{array} #{array == 1? "instance" : "instances"} of errorcode \"#{id}\""
+            report_buffer << {Profile::Severity::{{data2["severity"].id.capitalize}}, Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.cprint "Found #{array} #{array == 1? "instance" : "instances"} of errorcode \"#{id}\""}
           end
         {% else %}
-          dputs Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.cprint "Found #{records.size} #{records.size == 1? "instance" : "instances"}."
+          report_buffer << {Profile::Severity::{{data2["severity"].id.capitalize}}, Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.cprint "Found #{records.size} #{records.size == 1? "instance" : "instances"}."}
         {% end %}
       {% end %}
     end
   {% end %}
+  severity_out = Profile::Severity::Nil
+  report_buffer = report_buffer.sort{|e, e2|e[0] <=> e2[0]}.reverse.each do |e|
+    if e[0] == Profile::Severity::Moniter
+      logfile.puts e[1]
+      next
+    end
+    if e[0] != severity_out
+      severity_out = e[0]
+      severity_text = severity_out != Profile::Severity::Nil ? severity_out.to_s.downcase : "no"
+      dputs("\n" + ("With " + severity_text + " severity:").colorize.bold.to_s + "")
+    end
+    puts e[1]
+  end
 end
