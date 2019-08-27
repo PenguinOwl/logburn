@@ -1,18 +1,28 @@
 # logburn
 
-TODO: Write a description here
+logburn is a fast log analysis tool for parsing logs realtime.
 
 ## Installation
 
-TODO: Write installation instructions here
+If you don't have it, install Crystal:
+```
+curl -sSL https://dist.crystal-lang.org/apt/setup.sh | sudo bash
+sudo apt install crystal
+```
+
+For other distributions and other operating systems, refer to [crystal-lang](https://crystal-lang.org/reference/installation/).
+
+Then clone the repo and install:
+```
+git clone https://github.com/PenguinOwl/logburn
+cd logburn
+shards build
+sudo ln -s $(pwd)/bin/logburn /usr/bin/
+```
 
 ## Usage
 
-TODO: Write usage instructions here
-
-## Development
-
-TODO: Write development instructions here
+To add new profiles and errors, edit the configuration file and rebuild using `shards build`.
 
 ## Contributing
 
