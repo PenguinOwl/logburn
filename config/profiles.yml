@@ -3,11 +3,6 @@ synthesis:
     regex: /WARNING\s-\ssynthesis. Bit (.+) is stuck at Zero/
     color: blue
     severity: low
-  veri_error:
-    regex: /WARNING\s-\s(VERI-.+)/
-    severity: low
-    color: yellow
-    id: 1
   truncation_error:
     regex: /truncated to fit/
     color: green
@@ -17,3 +12,8 @@ synthesis:
   logical_net_error:
     regex: /logical net/
     color: cyan
+  veri_error:
+    regex: /(VERI-.+)/
+    severity: low
+    color: yellow
+    id: 1

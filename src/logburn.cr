@@ -135,9 +135,9 @@ module Logburn
           record_dict.each do |id, array|
             dputs Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.cprint "Found #{array} #{array == 1? "instance" : "instances"} of errorcode \"#{id}\""
           end
-        #{% else %}
+        {% else %}
           dputs Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.cprint "Found #{records.size} #{records.size == 1? "instance" : "instances"}."
-        #{% end %}
+        {% end %}
       {% end %}
     end
   {% end %}
