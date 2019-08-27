@@ -1,0 +1,13 @@
+name: logburn
+version: 0.1.0
+
+authors:
+  - PenguinOwl <henryjboles@gmail.com>
+
+targets:
+  logburn:
+    main: src/logburn.cr
+
+crystal: 0.30.0
+
+license: MIT

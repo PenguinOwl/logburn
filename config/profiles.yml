@@ -1,0 +1,19 @@
+synthesis:
+  bit_stuck_error:
+    regex: /WARNING\s-\ssynthesis. Bit (.+) is stuck at Zero/
+    color: blue
+    severity: low
+  veri_error:
+    regex: /WARNING\s-\s(VERI-.+)/
+    severity: low
+    color: yellow
+    id: 1
+  truncation_error:
+    regex: /truncated to fit/
+    color: green
+  bit_length_error:
+    regex: /differs from formal bit length/
+    color: magenta
+  logical_net_error:
+    regex: /logical net/
+    color: cyan
