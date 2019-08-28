@@ -34,7 +34,7 @@ profile_list = [] of String
 {% end %}
 
 if ARGV.empty?
-  STDERR.puts "ERROR: missing profile."
+  STDERR.puts "ERROR: missing profile. Valid profiles are: #{profile_list.join(", ")}"
   STDERR.puts parser
   exit(1)
 end
