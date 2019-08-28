@@ -7,12 +7,18 @@ require "option_parser"
 
 nolog = false
 readfile = ""
+hang = true
+mid_report = false
+report_delay = 5
 
 parser = OptionParser.parse! do |parser|
   parser.banner = "Usage: logburn [profile] [arguments]"
   parser.on("-n", "--no-color", "Displays output without color") { Colorize.enabled = false }
-  parser.on("-i NAME", "--input-file=NAME", "Specifies an input file to read from") { |ifile| readfile = ifile }
   parser.on("-o", "--only-errors", "Skip logging of unmatched lines") { nolog = true }
+  parser.on("-t", "--no-timeout", "Disables hang protection") { hang = false }
+  parser.on("-p", "--periodic", "Enable periodic reports") { mid_report = true }
+  parser.on("-i NAME", "--input-file=NAME", "Specifies an input file to read from") { |ifile| readfile = ifile }
+  parser.on("-d MIN", "--report-delay=5", "Set periodic report delay in minutes") { |delay| report_delay = delay.to_i }
   parser.on("-h", "--help", "Show this help") { puts parser }
   parser.invalid_option do |flag|
     STDERR.puts "ERROR: #{flag} is not a valid option."
@@ -37,6 +43,15 @@ unless profile_list.includes? ARGV[0]
   STDERR.puts "ERROR: #{ARGV[0]} is not a valid profile. Valid profiles are: #{profile_list.join(", ")}"
   STDERR.puts parser
   exit(1)
+end
+
+spawn do
+  sleep 2
+  if hang
+    STDERR.puts "ERROR: IO hang detected. Run with --no-timeout or specify an input file with --input-file"
+    STDERR.puts parser
+    exit(1)
+  end
 end
 
 macro colorput(tag, color, color2)
@@ -149,7 +164,7 @@ module Logburn
 
   def self.report
     report_buffer = [] of Tuple(Profile::Severity, String)
-    print "\n\n", ("="*60).colorize.bold, "\n\n", " "*27, "REPORT".colorize(:white).bold, "\n\n", ("="*60).colorize.bold, "\n\n"
+    print "\n\n", ("="*60).colorize.bold, "\n", " "*27, "REPORT".colorize(:white).bold, "\n", ("="*60).colorize.bold, "\n"
 
     {% for profile, data in CONFIG %}
       if ARGV[0] == "{{profile.id}}"
@@ -187,6 +202,13 @@ module Logburn
       puts e[1]
     end
     puts "", "Logfile is at #{@@logfile.path}".colorize.bold
+  end
+
+  if mid_report
+    spawn do
+      sleep report_delay*60
+      report
+    end
   end
 
   io = case readfile
