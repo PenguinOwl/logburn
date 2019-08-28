@@ -48,7 +48,7 @@ end
 spawn do
   sleep 2
   if hang
-    STDERR.puts "ERROR: IO hang detected. Run with --no-timeout or specify an input file with --input-file"
+    STDERR.puts "ERROR: IO hang detected. Logburn reads from stdin, so run it with \"command | logburn ...\" or specify an input file with --input-file"
     STDERR.puts parser
     exit(1)
   end
