@@ -46,6 +46,11 @@ module Logburn
     parser.on("-i NAME", "--input-file=NAME", "Specifies an input file to read from") { |ifile| readfile = ifile }
     parser.on("-d MIN", "--report-delay=5", "Set periodic report delay in minutes") { |delay| report_delay = delay.to_i }
     parser.on("-h", "--help", "Show this help") { puts parser }
+    parser.on("-v", "--open-log", "Open the previous log in $EDITOR") { 
+      channel = Channel(Bool).new
+      system ((ENV.has_key? "EDITOR") ? ENV["EDITOR"] : "nano") + " " + get_logpath 0
+      exit 0
+    }
     parser.invalid_option do |flag|
       STDERR.puts "ERROR: #{flag} is not a valid option."
       STDERR.puts parser
@@ -80,7 +85,7 @@ module Logburn
     end
   end
 
-  def self.gen_log
+  def self.get_logpath(diff)
     logdir = ENV["HOME"] + "/.logburn/logs/"
     Dir.mkdir_p(logdir)
     filename = ""
@@ -95,12 +100,16 @@ module Logburn
       old_log = entries.last
       numb = /[0-9]+$/.match(old_log)
       if numb
-        filename = "log_#{numb[0].to_i + 1}"
+        filename = "log_#{numb[0].to_i + diff}"
       else
         filename = "log_0"
       end
     end
-    File.open(logdir + filename, "w+")
+    return logdir + filename
+  end
+
+  def self.gen_log
+    File.open(get_logpath(1) , "w+")
   end
 
   @@logfile : File
