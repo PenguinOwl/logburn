@@ -164,7 +164,7 @@ module Logburn
 
   def self.report
     report_buffer = [] of Tuple(Profile::Severity, String)
-    print "\n\n", ("="*60).colorize.bold, "\n", " "*27, "REPORT".colorize(:white).bold, "\n", ("="*60).colorize.bold, "\n"
+    print "\n", ("="*60).colorize.bold, "\n", " "*27, "REPORT".colorize(:white).bold, "\n", ("="*60).colorize.bold, "\n"
 
     {% for profile, data in CONFIG %}
       if ARGV[0] == "{{profile.id}}"
