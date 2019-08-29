@@ -50,11 +50,13 @@ module Logburn
   report_delay = 5
   reporting = true
   log_reporting = true
+  not_all = true
 
   parser = OptionParser.parse! do |parser|
     parser.banner = "Usage: logburn [profile] [arguments]"
     parser.on("-c", "--no-color", "Displays output without color") { Colorize.enabled = false }
     parser.on("-o", "--only-errors", "Skip logging of unmatched lines") { nolog = true }
+    parser.on("-a", "--all-matches", "Display moniter events in reports") { not_all = false }
     parser.on("-t", "--no-timeout", "Disables hang protection") { hang = false }
     parser.on("-p", "--periodic", "Enable periodic reports") { mid_report = true }
     parser.on("-r", "--no-report", "Disable reporting") { reporting = false }
@@ -106,13 +108,15 @@ module Logburn
     Dir.mkdir_p(logdir)
     filename = ""
     Dir.open(logdir) do |dir|
-      entries = dir.entries.sort do |filename, filename2|
-        match = /[0-9]+$/.match(filename)
+      entries = dir.entries.sort do |filename1, filename2|
+        match = /[0-9]+$/.match(filename1)
         match = match ? match[0].to_i : 0
         match2 = /[0-9]+$/.match(filename2)
         match2 = match2 ? match2[0].to_i : 0
         match <=> match2
       end
+      entries.delete(".")
+      entries.delete("..")
       old_log = entries.last
       numb = /[0-9]+$/.match(old_log)
       if numb
@@ -128,22 +132,21 @@ module Logburn
     File.open(get_logpath(1) , "w+")
   end
 
-  @@logfile : File
-  @@logfile = self.gen_log
+  logfile = self.gen_log
 
   macro cdputs(text)
     puts ({{text}}).cprint({{text}}.line)
-    if log_reporting
-      @@logfile.puts ({{text}}).print({{text}}.line)
-    end
+    logfile.puts ({{text}}).print({{text}}.line)
   end
   
   macro dputs(text)
     puts {{text}}
     if log_reporting
-      @@logfile.puts ({{text}})
+      logfile.puts ({{text}})
     end
   end
+
+  puts CONFIG
 
   module Profile
     enum Severity
@@ -158,9 +161,14 @@ module Logburn
       module Profile{{apl.id.capitalize}}
         {% for profile, data in predata %}
           class {{profile.id.capitalize}}
-            property match : Regex::MatchData | Nil, line : String, id : String | Nil
+            property match : Regex::MatchData | Nil, line : String, id : String | Nil, hide : Bool
             name = "{{profile.id.downcase}}"
             @@records = [] of self
+            {% if data.keys.includes? "hide" %}
+              @hide = true
+            {% else %}
+              @hide = false
+            {% end %}
             def self.records
               @@records
             end
@@ -185,10 +193,6 @@ module Logburn
             end
             
             colorput({{profile.id}}, {{data["color"].id}}, light_{{data["color"].id}})
-
-            def oprint
-              cprint("#{line}")
-            end
           end
         {% end %}
       end
@@ -200,6 +204,9 @@ module Logburn
       report_buffer = [] of Tuple(Profile::Severity, String)
       log_buffer = [] of Tuple(Profile::Severity, String)
       print "\n", ("="*60).colorize.bold, "\n", " "*27, "REPORT".colorize(:white).bold, "\n", ("="*60).colorize.bold, "\n"
+      if log_reporting
+        logfile.puts "\nREPORT\n"
+      end
 
       {% for profile, data in CONFIG %}
         if ARGV[0] == "{{profile.id}}"
@@ -238,19 +245,19 @@ module Logburn
         puts e[1]
       end
       severity_out = Profile::Severity::Nil
-      puts "", "Logfile is at #{@@logfile.path}".colorize.bold
+      puts "", "Logfile is at #{logfile.path}".colorize.bold
       if log_reporting
         log_buffer = log_buffer.sort { |e, e2| e[0] <=> e2[0] }.reverse.each do |e|
-          if e[0] == Profile::Severity::Moniter
-            @@logfile.puts e[1]
+          if e[0] == Profile::Severity::Moniter && not_all
+            logfile.puts e[1]
             next
           end
           if e[0] != severity_out
             severity_out = e[0]
             severity_text = severity_out != Profile::Severity::Nil ? severity_out.to_s.downcase : "no"
-            @@logfile.puts "\n" + "With " + severity_text + " severity:"
+            logfile.puts "\n" + "With " + severity_text + " severity:"
           end
-          @@logfile.puts e[1]
+          logfile.puts e[1]
         end
       end
     end
@@ -289,7 +296,11 @@ module Logburn
       end
     {% end %}
     if match
-      cdputs match
+      unless match.hide
+        cdputs match
+      else
+        logfile.puts match.print(match.line)
+      end
       match.save
     else
       unless nolog
@@ -299,5 +310,5 @@ module Logburn
   end
 
   report
-  @@logfile.close
+  logfile.close
 end

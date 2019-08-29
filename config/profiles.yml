@@ -3,6 +3,7 @@ synthesis:
     regex: /WARNING\s-\ssynthesis. Bit (.+) is stuck at Zero/
     color: blue
     severity: low
+    hide: yes
   truncation_error:
     regex: /truncated to fit/
     color: green
@@ -11,9 +12,21 @@ synthesis:
     regex: /differs from formal bit length/
     color: magenta
     severity: low
-  logical_net_error:
-    regex: /logical net/
+  index_out_of_range_error:
+    regex: /VERI-1216$/
     severity: low
+    color: red
+  localized_parameter_error:
+    regex: /VERI-1199$/
+    severity: low
+    color: cyan
+  usb_compilation:
+    regex: /VERI-1018$/
+    severity: moniter
+    color: blue
+  veri_analysis:
+    regex: /VERI-1482$/
+    severity: moniter
     color: cyan
   veri_error:
     regex: /(VERI-.+)/
