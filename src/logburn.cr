@@ -20,6 +20,22 @@ macro colorput(tag, color, color2)
       str << "\n"
     }
   end
+  def print(text)
+    String.build { |str|
+      str << "[{{tag.id.upcase}}]"
+      str << " "
+      str << text
+      str << "\n"
+    }
+  end
+  def self.print(text)
+    String.build { |str|
+      str << "[{{tag.id.upcase}}]"
+      str << " "
+      str << text
+      str << "\n"
+    }
+  end
 end
 
 module Logburn
@@ -115,10 +131,17 @@ module Logburn
   @@logfile : File
   @@logfile = self.gen_log
 
+  macro cdputs(text)
+    puts ({{text}}).cprint({{text}}.line)
+    if log_reporting
+      @@logfile.puts ({{text}}).print({{text}}.line)
+    end
+  end
+  
   macro dputs(text)
     puts {{text}}
     if log_reporting
-      @@logfile.puts ({{text}}).colorize.toggle(false)
+      @@logfile.puts ({{text}})
     end
   end
 
@@ -163,7 +186,7 @@ module Logburn
             
             colorput({{profile.id}}, {{data["color"].id}}, light_{{data["color"].id}})
 
-            def print
+            def oprint
               cprint("#{line}")
             end
           end
@@ -175,6 +198,7 @@ module Logburn
   macro report
     if reporting
       report_buffer = [] of Tuple(Profile::Severity, String)
+      log_buffer = [] of Tuple(Profile::Severity, String)
       print "\n", ("="*60).colorize.bold, "\n", " "*27, "REPORT".colorize(:white).bold, "\n", ("="*60).colorize.bold, "\n"
 
       {% for profile, data in CONFIG %}
@@ -192,9 +216,11 @@ module Logburn
               end
               record_dict.each do |id, array|
                 report_buffer << {Profile::Severity::{{data2["severity"].id.capitalize}}, Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.cprint "Found #{array} #{array == 1? "instance" : "instances"} of errorcode \"#{id}\""}
+                log_buffer << {Profile::Severity::{{data2["severity"].id.capitalize}}, Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.print "Found #{array} #{array == 1? "instance" : "instances"} of errorcode \"#{id}\""}
               end
             {% else %}
               report_buffer << {Profile::Severity::{{data2["severity"].id.capitalize}}, Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.cprint "Found #{records.size} #{records.size == 1? "instance" : "instances"}."}
+              log_buffer << {Profile::Severity::{{data2["severity"].id.capitalize}}, Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.print "Found #{records.size} #{records.size == 1? "instance" : "instances"}."}
             {% end %}
           {% end %}
         end
@@ -202,17 +228,31 @@ module Logburn
       severity_out = Profile::Severity::Nil
       report_buffer = report_buffer.sort { |e, e2| e[0] <=> e2[0] }.reverse.each do |e|
         if e[0] == Profile::Severity::Moniter
-          @@logfile.puts e[1]
           next
         end
         if e[0] != severity_out
           severity_out = e[0]
           severity_text = severity_out != Profile::Severity::Nil ? severity_out.to_s.downcase : "no"
-          dputs("\n" + ("With " + severity_text + " severity:").colorize.bold.to_s + "")
+          puts("\n" + ("With " + severity_text + " severity:").colorize.bold.to_s + "")
         end
         puts e[1]
       end
+      severity_out = Profile::Severity::Nil
       puts "", "Logfile is at #{@@logfile.path}".colorize.bold
+      if log_reporting
+        log_buffer = log_buffer.sort { |e, e2| e[0] <=> e2[0] }.reverse.each do |e|
+          if e[0] == Profile::Severity::Moniter
+            @@logfile.puts e[1]
+            next
+          end
+          if e[0] != severity_out
+            severity_out = e[0]
+            severity_text = severity_out != Profile::Severity::Nil ? severity_out.to_s.downcase : "no"
+            @@logfile.puts "\n" + "With " + severity_text + " severity:"
+          end
+          @@logfile.puts e[1]
+        end
+      end
     end
   end
 
@@ -249,7 +289,7 @@ module Logburn
       end
     {% end %}
     if match
-      dputs match.print
+      cdputs match
       match.save
     else
       unless nolog
@@ -259,4 +299,5 @@ module Logburn
   end
 
   report
+  @@logfile.close
 end
