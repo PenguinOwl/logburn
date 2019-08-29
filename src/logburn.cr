@@ -146,8 +146,6 @@ module Logburn
     end
   end
 
-  puts CONFIG
-
   module Profile
     enum Severity
       Moniter
