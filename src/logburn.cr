@@ -3,57 +3,6 @@ require "colorize"
 require "yaml"
 require "option_parser"
 
-{{run("./read", "config/profiles.yml")}}
-
-nolog = false
-readfile = ""
-hang = true
-mid_report = false
-report_delay = 5
-
-parser = OptionParser.parse! do |parser|
-  parser.banner = "Usage: logburn [profile] [arguments]"
-  parser.on("-n", "--no-color", "Displays output without color") { Colorize.enabled = false }
-  parser.on("-o", "--only-errors", "Skip logging of unmatched lines") { nolog = true }
-  parser.on("-t", "--no-timeout", "Disables hang protection") { hang = false }
-  parser.on("-p", "--periodic", "Enable periodic reports") { mid_report = true }
-  parser.on("-i NAME", "--input-file=NAME", "Specifies an input file to read from") { |ifile| readfile = ifile }
-  parser.on("-d MIN", "--report-delay=5", "Set periodic report delay in minutes") { |delay| report_delay = delay.to_i }
-  parser.on("-h", "--help", "Show this help") { puts parser }
-  parser.invalid_option do |flag|
-    STDERR.puts "ERROR: #{flag} is not a valid option."
-    STDERR.puts parser
-    exit(1)
-  end
-end
-
-profile_list = [] of String
-
-{% for profile_name, data in CONFIG %}
-  profile_list << "{{profile_name.downcase.id}}"
-{% end %}
-
-if ARGV.empty?
-  STDERR.puts "ERROR: missing profile. Valid profiles are: #{profile_list.join(", ")}"
-  STDERR.puts parser
-  exit(1)
-end
-
-unless profile_list.includes? ARGV[0]
-  STDERR.puts "ERROR: #{ARGV[0]} is not a valid profile. Valid profiles are: #{profile_list.join(", ")}"
-  STDERR.puts parser
-  exit(1)
-end
-
-spawn do
-  sleep 2
-  if hang
-    STDERR.puts "ERROR: IO hang detected. Logburn reads from stdin, so run it with \"command | logburn ...\" or specify an input file with --input-file"
-    STDERR.puts parser
-    exit(1)
-  end
-end
-
 macro colorput(tag, color, color2)
   def cprint(text)
     String.build { |str|
@@ -75,6 +24,61 @@ end
 
 module Logburn
   VERSION = "0.1.0"
+
+  {{run("./read", "config/profiles.yml")}}
+
+  nolog = false
+  readfile = ""
+  hang = true
+  mid_report = false
+  report_delay = 5
+  reporting = true
+  log_reporting = true
+
+  parser = OptionParser.parse! do |parser|
+    parser.banner = "Usage: logburn [profile] [arguments]"
+    parser.on("-c", "--no-color", "Displays output without color") { Colorize.enabled = false }
+    parser.on("-o", "--only-errors", "Skip logging of unmatched lines") { nolog = true }
+    parser.on("-t", "--no-timeout", "Disables hang protection") { hang = false }
+    parser.on("-p", "--periodic", "Enable periodic reports") { mid_report = true }
+    parser.on("-r", "--no-report", "Disable reporting") { reporting = false }
+    parser.on("-l", "--no-log-report", "Disable reporting for logs") { log_reporting = false }
+    parser.on("-i NAME", "--input-file=NAME", "Specifies an input file to read from") { |ifile| readfile = ifile }
+    parser.on("-d MIN", "--report-delay=5", "Set periodic report delay in minutes") { |delay| report_delay = delay.to_i }
+    parser.on("-h", "--help", "Show this help") { puts parser }
+    parser.invalid_option do |flag|
+      STDERR.puts "ERROR: #{flag} is not a valid option."
+      STDERR.puts parser
+      exit(1)
+    end
+  end
+
+  profile_list = [] of String
+
+  {% for profile_name, data in CONFIG %}
+    profile_list << "{{profile_name.downcase.id}}"
+  {% end %}
+
+  if ARGV.empty?
+    STDERR.puts "ERROR: missing profile. Valid profiles are: #{profile_list.join(", ")}"
+    STDERR.puts parser
+    exit(1)
+  end
+
+  unless profile_list.includes? ARGV[0]
+    STDERR.puts "ERROR: #{ARGV[0]} is not a valid profile. Valid profiles are: #{profile_list.join(", ")}"
+    STDERR.puts parser
+    exit(1)
+  end
+
+  spawn do
+    sleep 2
+    if hang
+      STDERR.puts "ERROR: IO hang detected. Logburn reads from stdin, so run it with \"command | logburn ...\" or specify an input file with --input-file"
+      STDERR.puts parser
+      exit(1)
+    end
+  end
 
   def self.gen_log
     logdir = ENV["HOME"] + "/.logburn/logs/"
@@ -104,7 +108,9 @@ module Logburn
 
   macro dputs(text)
     puts {{text}}
-    @@logfile.puts ({{text}}).colorize.toggle(false)
+    if log_reporting
+      @@logfile.puts ({{text}}).colorize.toggle(false)
+    end
   end
 
   module Profile
@@ -157,51 +163,53 @@ module Logburn
     {% end %}
   end
 
+  macro report
+    if reporting
+      report_buffer = [] of Tuple(Profile::Severity, String)
+      print "\n", ("="*60).colorize.bold, "\n", " "*27, "REPORT".colorize(:white).bold, "\n", ("="*60).colorize.bold, "\n"
+
+      {% for profile, data in CONFIG %}
+        if ARGV[0] == "{{profile.id}}"
+          {% for type, data2 in data %}
+            records = Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.records
+            {% if data2.keys.includes? "id" %}
+              record_dict = {} of String | Nil => Int32
+              records.each do |ele|
+                if record_dict.has_key? ele.id
+                  record_dict[ele.id] += 1 
+                else
+                  record_dict[ele.id] = 1 
+                end
+              end
+              record_dict.each do |id, array|
+                report_buffer << {Profile::Severity::{{data2["severity"].id.capitalize}}, Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.cprint "Found #{array} #{array == 1? "instance" : "instances"} of errorcode \"#{id}\""}
+              end
+            {% else %}
+              report_buffer << {Profile::Severity::{{data2["severity"].id.capitalize}}, Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.cprint "Found #{records.size} #{records.size == 1? "instance" : "instances"}."}
+            {% end %}
+          {% end %}
+        end
+      {% end %}
+      severity_out = Profile::Severity::Nil
+      report_buffer = report_buffer.sort { |e, e2| e[0] <=> e2[0] }.reverse.each do |e|
+        if e[0] == Profile::Severity::Moniter
+          @@logfile.puts e[1]
+          next
+        end
+        if e[0] != severity_out
+          severity_out = e[0]
+          severity_text = severity_out != Profile::Severity::Nil ? severity_out.to_s.downcase : "no"
+          dputs("\n" + ("With " + severity_text + " severity:").colorize.bold.to_s + "")
+        end
+        puts e[1]
+      end
+      puts "", "Logfile is at #{@@logfile.path}".colorize.bold
+    end
+  end
+
   Signal::INT.trap do
     report
     exit 1
-  end
-
-  def self.report
-    report_buffer = [] of Tuple(Profile::Severity, String)
-    print "\n", ("="*60).colorize.bold, "\n", " "*27, "REPORT".colorize(:white).bold, "\n", ("="*60).colorize.bold, "\n"
-
-    {% for profile, data in CONFIG %}
-      if ARGV[0] == "{{profile.id}}"
-        {% for type, data2 in data %}
-          records = Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.records
-          {% if data2.keys.includes? "id" %}
-            record_dict = {} of String | Nil => Int32
-            records.each do |ele|
-              if record_dict.has_key? ele.id
-                record_dict[ele.id] += 1 
-              else
-                record_dict[ele.id] = 1 
-              end
-            end
-            record_dict.each do |id, array|
-              report_buffer << {Profile::Severity::{{data2["severity"].id.capitalize}}, Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.cprint "Found #{array} #{array == 1? "instance" : "instances"} of errorcode \"#{id}\""}
-            end
-          {% else %}
-            report_buffer << {Profile::Severity::{{data2["severity"].id.capitalize}}, Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.cprint "Found #{records.size} #{records.size == 1? "instance" : "instances"}."}
-          {% end %}
-        {% end %}
-      end
-    {% end %}
-    severity_out = Profile::Severity::Nil
-    report_buffer = report_buffer.sort { |e, e2| e[0] <=> e2[0] }.reverse.each do |e|
-      if e[0] == Profile::Severity::Moniter
-        @@logfile.puts e[1]
-        next
-      end
-      if e[0] != severity_out
-        severity_out = e[0]
-        severity_text = severity_out != Profile::Severity::Nil ? severity_out.to_s.downcase : "no"
-        dputs("\n" + ("With " + severity_text + " severity:").colorize.bold.to_s + "")
-      end
-      puts e[1]
-    end
-    puts "", "Logfile is at #{@@logfile.path}".colorize.bold
   end
 
   if mid_report
