@@ -147,11 +147,13 @@ log_reporting = true
 not_all = true
 man_log_file = nil
 logging = false
+report_only = false
 
 parser = OptionParser.parse! do |parser|
   parser.banner = "Usage: logburn [profile] [arguments]"
   parser.on("-q", "--logging", "Enable logging") { logging = true }
   parser.on("-c", "--no-color", "Displays output without color") { Colorize.enabled = false }
+  parser.on("-l", "--inline", "Toggle inline display") { report_only = true }
   parser.on("-o", "--only-errors", "Skip logging of unmatched lines") { nolog = true }
   parser.on("-a", "--all-matches", "Display moniter events in reports") { not_all = false }
   parser.on("-t", "--no-timeout", "Disables hang protection") { hang = false }
@@ -172,6 +174,11 @@ parser = OptionParser.parse! do |parser|
     STDERR.puts parser
     exit(1)
   end
+
+  if readfile
+    report_only = !report_only
+  end
+
 end
 
 profile_list = [] of String
@@ -238,7 +245,9 @@ macro report
       puts e[1]
     end
     severity_out = Profile::Severity::Nil
-    puts "", "Logfile is at #{logfile.path}".colorize.bold
+    if logging
+      puts "", "Logfile is at #{logfile.path}".colorize.bold
+    end
     if log_reporting
       log_buffer = log_buffer.sort { |e, e2| e[0] <=> e2[0] }.reverse.each do |e|
         if e[0] == Profile::Severity::Moniter && not_all
@@ -308,7 +317,9 @@ loop do
   {% end %}
   if match
     unless match.hide
-      puts match.cprint(match.line)
+      unless report_only 
+        puts match.cprint(match.line)
+      end
       log match.print(match.line)
     else
       log match.print(match.line)
@@ -317,10 +328,16 @@ loop do
   else
     unless nolog
       log "[UNLOGGED] #{line}"
-      puts "[UNLOGGED] #{line}"
+      unless report_only
+        puts "[UNLOGGED] #{line}"
+      end
     end
   end
 end
 
 report
+path = logfile.path
 logfile.close
+unless logging
+  File.delete(path)
+end
