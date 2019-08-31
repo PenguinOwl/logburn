@@ -152,7 +152,7 @@ help = false
 
 parser = OptionParser.parse! do |parser|
   parser.banner = "Usage: logburn [profile] [arguments]"
-  parser.on("-q", "--logging", "Enable logging") { logging = false }
+  parser.on("-q", "--logging", "Disable logging") { logging = false }
   parser.on("-c", "--no-color", "Displays output without color") { Colorize.enabled = false }
   parser.on("-l", "--inline", "Toggle inline display") { report_only = true }
   parser.on("-o", "--only-errors", "Skip logging of unmatched lines") { nolog = true }
