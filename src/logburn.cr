@@ -64,8 +64,12 @@ module Logburn
       end
       entries.delete(".")
       entries.delete("..")
-      old_log = entries.last
-      numb = /[0-9]+$/.match(old_log)
+      if entries
+        old_log = entries.last
+        numb = /[0-9]+$/.match(old_log)
+      else
+        numb = nil
+      end
       if numb
         filename = "log_#{numb[0].to_i + diff}"
       else
@@ -157,7 +161,7 @@ parser = OptionParser.parse! do |parser|
   parser.on("-i NAME", "--input-file=NAME", "Specifies an input file to read from") { |ifile| readfile = File.expand_path ifile }
   parser.on("-d MIN", "--report-delay=5", "Set periodic report delay in minutes") { |delay| report_delay = delay.to_i }
   parser.on("-f FILE", "--log-file=FILE", "Set file for logging") { |file| man_log_file = file }
-  parser.on("-h", "--help", "Show this help") { puts parser }
+  parser.on("-h", "--help", "Show this help") { puts parser; exit 0 }
   parser.on("-v", "--open-log", "Open the previous log in $EDITOR") { 
     channel = Channel(Bool).new
     system ((ENV.has_key? "EDITOR") ? ENV["EDITOR"] : "nano") + " " + get_logpath 0
