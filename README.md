@@ -24,6 +24,46 @@ sudo ln -s $(pwd)/bin/logburn /usr/bin/
 
 To add new profiles and errors, edit the configuration file and rebuild using `shards build`.
 
+The configuration file needs to be formatted like this:
+```
+# The name of the profile
+my_profile:
+  # The name of the first item to match
+  my_first_error:
+    # A regular expression to match from the log
+    regex: /ERROR-(\d+)/
+    # Color to display in log, avaible colors are: red, green, yellow, blue, magenta, cyan
+    color: red
+    # The severity of the match, avaible severities are: moniter, low, medium, high (moniter is not shown in the reports)
+    severity: low
+    # If your error uses a error code, this is the matching group of an identifying id in the regex, use 0 for the whole match
+    id: 1
+    # Only include if you want your error to be hidded from display (it will still be logged)
+    # hide: true
+  my_second_error:
+    regex: /Info/
+    color: blue
+    severity: moniter
+    hide: true
+```
+```
+Usage: logburn [profile] [arguments]
+    -c, --no-color                   Displays output without color
+    -o, --only-errors                Skip logging of unmatched lines
+    -a, --all-matches                Display moniter events in reports
+    -t, --no-timeout                 Disables hang protection
+    -p, --periodic                   Enable periodic reports
+    -r, --no-report                  Disable reporting
+    -l, --no-log-report              Disable reporting for logs
+    -i NAME, --input-file=NAME       Specifies an input file to read from
+    -d MIN, --report-delay=5         Set periodic report delay in minutes
+    -f FILE, --log-file=FILE         Set file for logging
+    -h, --help                       Show this help
+    -v, --open-log                   Open the previous log in $EDITOR
+```
+
+
+    
 ## Contributing
 
 1. Fork it (<https://github.com/PenguinOwl/logburn/fork>)
