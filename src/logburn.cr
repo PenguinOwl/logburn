@@ -148,6 +148,7 @@ not_all = true
 man_log_file = nil
 logging = false
 report_only = false
+help = false
 
 parser = OptionParser.parse! do |parser|
   parser.banner = "Usage: logburn [profile] [arguments]"
@@ -163,7 +164,7 @@ parser = OptionParser.parse! do |parser|
   parser.on("-i NAME", "--input-file=NAME", "Specifies an input file to read from") { |ifile| readfile = File.expand_path ifile }
   parser.on("-d MIN", "--report-delay=5", "Set periodic report delay in minutes") { |delay| report_delay = delay.to_i }
   parser.on("-f FILE", "--log-file=FILE", "Set file for logging") { |file| man_log_file = file }
-  parser.on("-h", "--help", "Show this help") { puts parser; exit 0 }
+  parser.on("-h", "--help", "Show this help") { help = true }
   parser.on("-v", "--open-log", "Open the previous log in $EDITOR") { 
     channel = Channel(Bool).new
     system ((ENV.has_key? "EDITOR") ? ENV["EDITOR"] : "nano") + " " + get_logpath 0
@@ -175,10 +176,15 @@ parser = OptionParser.parse! do |parser|
     exit(1)
   end
 
-  if readfile
-    report_only = !report_only
-  end
+end
 
+if readfile
+  report_only = !report_only
+end
+
+if help
+  puts parser
+  exit 0
 end
 
 profile_list = [] of String
