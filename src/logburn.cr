@@ -146,13 +146,13 @@ report_delay = 5
 log_reporting = true
 not_all = true
 man_log_file = nil
-logging = false
+logging = true
 report_only = false
 help = false
 
 parser = OptionParser.parse! do |parser|
   parser.banner = "Usage: logburn [profile] [arguments]"
-  parser.on("-q", "--logging", "Enable logging") { logging = true }
+  parser.on("-q", "--logging", "Enable logging") { logging = false }
   parser.on("-c", "--no-color", "Displays output without color") { Colorize.enabled = false }
   parser.on("-l", "--inline", "Toggle inline display") { report_only = true }
   parser.on("-o", "--only-errors", "Skip logging of unmatched lines") { nolog = true }
