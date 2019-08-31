@@ -149,13 +149,15 @@ man_log_file = nil
 logging = true
 report_only = false
 help = false
+nosort = false
 
 parser = OptionParser.parse! do |parser|
   parser.banner = "Usage: logburn [profile] [arguments]"
   parser.on("-q", "--logging", "Disable logging") { logging = false }
   parser.on("-c", "--no-color", "Displays output without color") { Colorize.enabled = false }
   parser.on("-l", "--inline", "Toggle inline display") { report_only = true }
-  parser.on("-o", "--only-errors", "Skip logging of unmatched lines") { nolog = true }
+  parser.on("-o", "--log-errors", "Toggle logging of unmatched lines") { nolog = true }
+  parser.on("-d", "--perserve-order", "Perserve order of logged lines") { nosort = true }
   parser.on("-a", "--all-matches", "Display moniter events in reports") { not_all = false }
   parser.on("-t", "--no-timeout", "Disables hang protection") { hang = false }
   parser.on("-p", "--periodic", "Enable periodic reports") { mid_report = true }
@@ -178,9 +180,8 @@ parser = OptionParser.parse! do |parser|
 
 end
 
-if readfile
-  report_only = !report_only
-end
+report_only = !report_only if readfile
+nolog = !nolog unless nosort
 
 if help
   puts parser
@@ -218,23 +219,25 @@ macro report
       if ARGV[0] == "{{profile.id}}"
         {% for type, data2 in data %}
           records = Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.records
-          {% if data2.keys.includes? "id" %}
-            record_dict = {} of String | Nil => Int32
-            records.each do |ele|
-              if record_dict.has_key? ele.id
-                record_dict[ele.id] += 1 
-              else
-                record_dict[ele.id] = 1 
+          unless records.size == 0
+            {% if data2.keys.includes? "id" %}
+              record_dict = {} of String | Nil => Int32
+              records.each do |ele|
+                if record_dict.has_key? ele.id
+                  record_dict[ele.id] += 1 
+                else
+                  record_dict[ele.id] = 1 
+                end
               end
-            end
-            record_dict.each do |id, array|
-              report_buffer << {Profile::Severity::{{data2["severity"].id.capitalize}}, Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.cprint "Found #{array} #{array == 1? "instance" : "instances"} of errorcode \"#{id}\""}
-              log_buffer << {Profile::Severity::{{data2["severity"].id.capitalize}}, Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.print "Found #{array} #{array == 1? "instance" : "instances"} of errorcode \"#{id}\""}
-            end
-          {% else %}
-            report_buffer << {Profile::Severity::{{data2["severity"].id.capitalize}}, Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.cprint "Found #{records.size} #{records.size == 1? "instance" : "instances"}."}
-            log_buffer << {Profile::Severity::{{data2["severity"].id.capitalize}}, Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.print "Found #{records.size} #{records.size == 1? "instance" : "instances"}."}
-          {% end %}
+              record_dict.each do |id, array|
+                report_buffer << {Profile::Severity::{{data2["severity"].id.capitalize}}, Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.cprint "Found #{array} #{array == 1? "instance" : "instances"} of errorcode \"#{id}\""}
+                log_buffer << {Profile::Severity::{{data2["severity"].id.capitalize}}, Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.print "Found #{array} #{array == 1? "instance" : "instances"} of errorcode \"#{id}\""}
+              end
+            {% else %}
+              report_buffer << {Profile::Severity::{{data2["severity"].id.capitalize}}, Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.cprint "Found #{records.size} #{records.size == 1? "instance" : "instances"}."}
+              log_buffer << {Profile::Severity::{{data2["severity"].id.capitalize}}, Profile::Profile{{profile.id.capitalize}}::{{type.id.capitalize}}.print "Found #{records.size} #{records.size == 1? "instance" : "instances"}."}
+            {% end %}
+          end
         {% end %}
       end
     {% end %}
@@ -341,6 +344,19 @@ loop do
   end
 end
 
+if logging && !nosort
+  content = File.read(logfile.path).split("\n")
+  content.delete ""
+  content = content.sort { |line1, line2|
+    regex = /^\[([A-Z0-9_]+)\]/
+    if match1 = regex.match(line1)
+      if match2 = regex.match(line2)
+        match1[1] <=> match2[1]
+      end
+    end
+  }
+  File.write(logfile.path, content.join("\n"))
+end
 report
 path = logfile.path
 logfile.close
