@@ -49,9 +49,8 @@ end
 module Logburn
   VERSION = "0.1.0"
 
-
   def get_logpath(diff)
-    logdir = ENV["HOME"] + "/.logburn/logs/"
+    logdir = "/tmp/logburn/"
     Dir.mkdir_p(logdir)
     filename = ""
     Dir.open(logdir) do |dir|
@@ -64,7 +63,7 @@ module Logburn
       end
       entries.delete(".")
       entries.delete("..")
-      if entries
+      unless entries.empty?
         old_log = entries.last
         numb = /[0-9]+$/.match(old_log)
       else
@@ -147,10 +146,11 @@ report_delay = 5
 log_reporting = true
 not_all = true
 man_log_file = nil
-logging = true
+logging = false
 
 parser = OptionParser.parse! do |parser|
   parser.banner = "Usage: logburn [profile] [arguments]"
+  parser.on("-q", "--logging", "Enable logging") { logging = true }
   parser.on("-c", "--no-color", "Displays output without color") { Colorize.enabled = false }
   parser.on("-o", "--only-errors", "Skip logging of unmatched lines") { nolog = true }
   parser.on("-a", "--all-matches", "Display moniter events in reports") { not_all = false }
