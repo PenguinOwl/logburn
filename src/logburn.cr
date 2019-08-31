@@ -51,6 +51,7 @@ module Logburn
   reporting = true
   log_reporting = true
   not_all = true
+  man_log_file = nil
 
   parser = OptionParser.parse! do |parser|
     parser.banner = "Usage: logburn [profile] [arguments]"
@@ -63,6 +64,7 @@ module Logburn
     parser.on("-l", "--no-log-report", "Disable reporting for logs") { log_reporting = false }
     parser.on("-i NAME", "--input-file=NAME", "Specifies an input file to read from") { |ifile| readfile = ifile }
     parser.on("-d MIN", "--report-delay=5", "Set periodic report delay in minutes") { |delay| report_delay = delay.to_i }
+    parser.on("-f FILE", "--log-file=FILE", "Set file for logging") { |file| man_log_file = file }
     parser.on("-h", "--help", "Show this help") { puts parser }
     parser.on("-v", "--open-log", "Open the previous log in $EDITOR") { 
       channel = Channel(Bool).new
@@ -132,7 +134,14 @@ module Logburn
     File.open(get_logpath(1) , "w+")
   end
 
-  logfile = self.gen_log
+  logfile : File
+  if file = man_log_file
+    textpath = File.expand_path file
+    File.touch(textpath)
+    logfile = File.open(textpath, "w+")
+  else
+    logfile = self.gen_log
+  end
 
   macro cdputs(text)
     puts ({{text}}).cprint({{text}}.line)
