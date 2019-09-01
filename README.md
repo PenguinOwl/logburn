@@ -48,8 +48,11 @@ my_profile:
 ```
 ```
 Usage: logburn [profile] [arguments]
+    -q, --logging                    Disable logging
     -c, --no-color                   Displays output without color
-    -o, --only-errors                Skip logging of unmatched lines
+    -l, --inline                     Toggle inline display
+    -o, --log-errors                 Toggle logging of unmatched lines
+    -d, --perserve-order             Perserve order of logged lines
     -a, --all-matches                Display moniter events in reports
     -t, --no-timeout                 Disables hang protection
     -p, --periodic                   Enable periodic reports
