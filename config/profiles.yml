@@ -28,6 +28,11 @@ synthesis:
     regex: /VERI-1482$/
     severity: moniter
     color: cyan
+  veri_default_warning:
+    regex: /WARNING(.*)/
+    severity: high
+    color: red
+    id: 1
   veri_error:
     regex: /(VERI-.+)/
     severity: low

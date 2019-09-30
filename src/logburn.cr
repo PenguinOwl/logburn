@@ -4,7 +4,7 @@ require "yaml"
 require "option_parser"
 
 {{run("./read", "config/profiles.yml")}}
-  
+
 macro colorput(tag, color, color2)
   def cprint(text)
     String.build { |str|
@@ -79,9 +79,8 @@ module Logburn
   end
 
   def gen_log
-    File.open(get_logpath(1) , "w+")
+    File.open(get_logpath(1), "w+")
   end
-
 
   module Profile
     enum Severity
@@ -155,8 +154,8 @@ parser = OptionParser.parse! do |parser|
   parser.banner = "Usage: logburn [profile] [arguments]"
   parser.on("-q", "--logging", "Disable logging") { logging = false }
   parser.on("-c", "--no-color", "Displays output without color") { Colorize.enabled = false }
-  parser.on("-l", "--inline", "Toggle inline display") { report_only = true }
-  parser.on("-o", "--log-errors", "Toggle logging of unmatched lines") { nolog = true }
+  parser.on("-l", "--inline", "Toggle inline display") { report_only = !report_only }
+  parser.on("-o", "--log-errors", "Toggle logging of unmatched lines") { nolog = !nolog }
   parser.on("-d", "--perserve-order", "Perserve order of logged lines") { nosort = true }
   parser.on("-a", "--all-matches", "Display moniter events in reports") { not_all = false }
   parser.on("-t", "--no-timeout", "Disables hang protection") { hang = false }
@@ -167,7 +166,7 @@ parser = OptionParser.parse! do |parser|
   parser.on("-d MIN", "--report-delay=5", "Set periodic report delay in minutes") { |delay| report_delay = delay.to_i }
   parser.on("-f FILE", "--log-file=FILE", "Set file for logging") { |file| man_log_file = file }
   parser.on("-h", "--help", "Show this help") { help = true }
-  parser.on("-v", "--open-log", "Open the previous log in $EDITOR") { 
+  parser.on("-v", "--open-log", "Open the previous log in $EDITOR") {
     channel = Channel(Bool).new
     system ((ENV.has_key? "EDITOR") ? ENV["EDITOR"] : "nano") + " " + get_logpath 0
     exit 0
@@ -177,7 +176,6 @@ parser = OptionParser.parse! do |parser|
     STDERR.puts parser
     exit(1)
   end
-
 end
 
 report_only = !report_only if readfile
@@ -326,7 +324,7 @@ loop do
   {% end %}
   if match
     unless match.hide
-      unless report_only 
+      unless report_only
         puts match.cprint(match.line)
       end
       log match.print(match.line)
