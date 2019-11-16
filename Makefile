@@ -1,7 +1,11 @@
-all: spec build
+.PHONY: all build clean install uninstall
 
-build:
+all: build
+
+bin/logburn: src/** config/**
 	shards build
+
+build: bin/logburn
 
 clean:
 	rm -rf lib
@@ -12,6 +16,3 @@ install: build
 
 uninstall: 
 	rm /usr/bin/logburn
-
-spec:
-	crystal tool format
